@@ -131,6 +131,7 @@ const firebaseConfig = {
 };
 
 const db = getDatabase(initializeApp(firebaseConfig));
+// Dùng nhánh hub_dat riêng biệt cho trang /dat
 const hubRef = ref(db, "hub_dat");
 
 const $ = id => document.getElementById(id);
@@ -171,3 +172,527 @@ const wifi5List1 = [
     "Kura Stand","Yama Brew","Tsuki Coffee","Umi Lounge","Miso Cafe",
     "Cyber Tokyo","Kanagawa Beans","Chiba Cup","Saitama Cafe","Fukuoka Roast",
     "Yokohama Brew","Hiroshima Coffee","Sapporo View","Oita House","Kumamoto Beans",
+    "Nagano Cup","Shizuoka Chill","Gunma Roast","Tochigi Coffee","Ibaraki Lounge","Akita Cafe"
+];
+
+const wifi5List2 = [
+    "Cafe Nova","Kissa Sol","Minato Brew","Matcha Lab","Kansai Roast",
+    "Chiba Hub","Saitama Lounge","Ibaraki Cup","Gifu Cafe","Yamaguchi Chill",
+    "Nagano Bean","Gunma Stand","Tochigi Roast","Fukushima Lounge","Miyagi Cup",
+    "Shiga Cafe","Ehime Brew","Kochi Chill","Saga Roast","Yamagata Bean",
+    "Tokushima Cup","Kagawa Lounge","Fukui Cafe","Wakayama Brew","Yamanashi Chill",
+    "Hyogo Roast","Aichi Bean","Shizuoka Cup","Hokkaido Lounge","Kyushu Cafe","Tokyo Station"
+];
+
+let editingShortcuts = false;
+
+let state = {
+    mails:[],
+    used:[],
+    quickGiftutos:["","",""],
+    giftutos:[],
+    links:[],
+    shortcuts:defaultShortcuts,
+    wifis:[],
+    accounts:[],
+    accounts1000:[],
+    note:""
+};
+
+function escapeShortcut(value) {
+    return String(value || "")
+        .replace(/&/g,"&amp;")
+        .replace(/"/g,"&quot;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;");
+}
+
+function getFocusInfo() {
+    const el = document.activeElement;
+    if (!el || !el.id) return null;
+    return {
+        id:el.id,
+        start:typeof el.selectionStart === "number" ? el.selectionStart : null,
+        end:typeof el.selectionEnd === "number" ? el.selectionEnd : null,
+        direction:el.selectionDirection || "none"
+    };
+}
+
+function restoreFocus(info) {
+    if (!info) return;
+    const el = $(info.id);
+    if (!el) return;
+    el.focus({preventScroll:true});
+    if (info.start !== null && info.end !== null) {
+        try {
+            el.setSelectionRange(info.start,info.end,info.direction);
+        } catch (e) {}
+    }
+}
+
+function renderShortcuts() {
+    const buttons = $("shortcutButtons");
+    const editor = $("shortcutEditor");
+    const editContainer = $("shortcutEditContainer");
+    const editButton = $("btn-edit-shortcuts");
+
+    buttons.innerHTML = "";
+
+    state.shortcuts.forEach((item,i) => {
+        const btn = document.createElement("button");
+        btn.className = "shortcut-btn";
+        btn.textContent = item.name || ("Link " + (i+1));
+
+        btn.onclick = () => {
+            if (item.url) {
+                window.open(item.url,"_blank","noopener,noreferrer");
+            } else {
+                alert("Link chưa được cập nhật!");
+            }
+        };
+
+        buttons.appendChild(btn);
+    });
+
+    if (editingShortcuts) {
+        editor.style.display = "block";
+        editButton.textContent = "✖ Đóng";
+        editContainer.innerHTML = "";
+
+        state.shortcuts.forEach((item,i) => {
+            const box = document.createElement("div");
+            box.className = "shortcut-edit";
+
+            box.innerHTML = `
+                <label for="shortcut-name-${i}">Tên nút ${i+1}</label>
+                <input id="shortcut-name-${i}" value="${escapeShortcut(item.name)}" placeholder="Tên lối tắt">
+
+                <label for="shortcut-url-${i}">Đường dẫn URL</label>
+                <input id="shortcut-url-${i}" value="${escapeShortcut(item.url)}" placeholder="Nhập link mới">
+            `;
+
+            editContainer.appendChild(box);
+        });
+    } else {
+        editor.style.display = "none";
+        editButton.textContent = "✏ Sửa";
+    }
+}
+
+$("btn-edit-shortcuts").onclick = () => {
+    editingShortcuts = !editingShortcuts;
+    renderShortcuts();
+};
+
+$("btn-save-shortcuts").onclick = () => {
+    const newShortcuts = state.shortcuts.map((item,i) => ({
+        name:$("shortcut-name-"+i).value.trim(),
+        url:$("shortcut-url-"+i).value.trim()
+    }));
+
+    state.shortcuts = newShortcuts;
+    update(hubRef,{shortcuts:newShortcuts});
+    editingShortcuts = false;
+    renderShortcuts();
+    alert("Đã lưu các lối tắt!");
+};
+
+$("btn-cancel-shortcuts").onclick = () => {
+    editingShortcuts = false;
+    renderShortcuts();
+};
+
+onValue(hubRef,(snap) => {
+    const data = snap.val() || {};
+
+    state.mails = data.mails || Array(10).fill("");
+    state.used = data.used || Array(10).fill(false);
+    state.quickGiftutos = data.quickGiftutos || ["","",""];
+    state.giftutos = data.giftutos || Array(10).fill("");
+
+    state.links = data.links || Array.from(
+        {length:10},
+        (_,i) => ({name:"Link "+(i+1),url:""})
+    );
+
+    state.shortcuts = data.shortcuts || defaultShortcuts;
+
+    if (!editingShortcuts) {
+        renderShortcuts();
+    }
+
+    const loadedWifis = data.wifis || [];
+
+    state.wifis = Array.from({length:31},(_,i) => {
+        const item = loadedWifis[i] || {};
+
+        return {
+            w24_1:item.w24_1 && item.w24_1 !== "undefined" ? item.w24_1 : wifi24List1[i],
+            w24_2:item.w24_2 && item.w24_2 !== "undefined" ? item.w24_2 : wifi24List2[i],
+            w5_1:item.w5_1 && item.w5_1 !== "undefined" ? item.w5_1 : wifi5List1[i],
+            w5_2:item.w5_2 && item.w5_2 !== "undefined" ? item.w5_2 : wifi5List2[i]
+        };
+    });
+
+    const loadedAccs = data.accounts || [];
+
+    state.accounts = Array.from({length:200},(_,i) => {
+        return loadedAccs[i] || {
+            name:"",
+            pass:"",
+            checked1:false,
+            checked2:false
+        };
+    });
+
+    const loadedAccs1000 = data.accounts1000 || [];
+
+    state.accounts1000 = Array.from({length:1000},(_,i) => {
+        return loadedAccs1000[i] || {
+            name:"",
+            pass:"",
+            checked:false
+        };
+    });
+
+    if (document.activeElement.id !== "note") {
+        $("note").value = data.note || "";
+    }
+
+    render();
+});
+
+function render() {
+    const focusInfo = getFocusInfo();
+
+    $("emails").innerHTML = "";
+    $("cnt").textContent = "Đã dùng: " + state.used.filter(Boolean).length + "/10";
+
+    state.mails.forEach((m,i) => {
+        const r = document.createElement("div");
+        r.className = "row";
+        r.innerHTML = `<div class="grow"><b>Mail ${i+1}</b> ${state.used[i] ? "✅" : ""}<br>${m || "(trống)"}</div>`;
+
+        const b = document.createElement("button");
+        b.textContent = "Copy";
+        b.onclick = () => {
+            if (m) navigator.clipboard.writeText(m);
+            state.used[i] = !state.used[i];
+            update(hubRef,{used:state.used});
+        };
+
+        r.appendChild(b);
+        $("emails").appendChild(r);
+    });
+
+    $("quickGiftutoContainer").innerHTML = "";
+    state.quickGiftutos.forEach((qUrl,i) => {
+        const div = document.createElement("div");
+        div.className = "row";
+
+        const lbl = document.createElement("span");
+        lbl.className = "num-label";
+        lbl.textContent = i+1;
+
+        const input = document.createElement("input");
+        input.value = qUrl;
+        input.className = "grow";
+        input.placeholder = "Link Giftuto nhanh " + (i+1);
+        input.id = "qgf_"+i;
+
+        input.oninput = e => {
+            state.quickGiftutos[i] = e.target.value;
+            update(hubRef,{quickGiftutos:state.quickGiftutos});
+        };
+
+        const bOpen = document.createElement("button");
+        bOpen.textContent = "🌐 Mở";
+        bOpen.style.background = "#52c41a";
+        bOpen.onclick = () => {
+            const url = state.quickGiftutos[i];
+            if (url) window.open(url,"_blank","noopener,noreferrer");
+        };
+
+        const bDel = document.createElement("button");
+        bDel.textContent = "❌ Xóa";
+        bDel.style.background = "#ff4d4f";
+        bDel.onclick = () => {
+            state.quickGiftutos[i] = "";
+            update(hubRef,{quickGiftutos:state.quickGiftutos});
+        };
+
+        div.append(lbl,input,bOpen,bDel);
+        $("quickGiftutoContainer").appendChild(div);
+    });
+
+    $("giftutoContainer").innerHTML = "";
+    state.giftutos.forEach((gUrl,i) => {
+        const div = document.createElement("div");
+        div.className = "row";
+
+        const lbl = document.createElement("span");
+        lbl.className = "num-label";
+        lbl.textContent = i+1;
+
+        const input = document.createElement("input");
+        input.value = gUrl;
+        input.className = "grow";
+        input.placeholder = "Link Giftuto " + (i+1);
+        input.id = "gf_"+i;
+
+        input.oninput = e => {
+            state.giftutos[i] = e.target.value;
+            update(hubRef,{giftutos:state.giftutos});
+        };
+
+        const bOpen = document.createElement("button");
+        bOpen.textContent = "🌐 Mở";
+        bOpen.style.background = "#52c41a";
+        bOpen.onclick = () => {
+            const url = state.giftutos[i];
+            if (url) window.open(url,"_blank","noopener,noreferrer");
+        };
+
+        const bDel = document.createElement("button");
+        bDel.textContent = "❌ Xóa";
+        bDel.style.background = "#ff4d4f";
+        bDel.onclick = () => {
+            state.giftutos[i] = "";
+            update(hubRef,{giftutos:state.giftutos});
+        };
+
+        div.append(lbl,input,bOpen,bDel);
+        $("giftutoContainer").appendChild(div);
+    });
+
+    $("linksContainer").innerHTML = "";
+    state.links.forEach((l,i) => {
+        const box = document.createElement("div");
+        box.className = "linkbox";
+
+        const n = document.createElement("input");
+        n.value = l.name || "";
+        n.id = "ln"+i;
+        n.oninput = e => {
+            state.links[i].name = e.target.value;
+            update(hubRef,{links:state.links});
+        };
+
+        const u = document.createElement("input");
+        u.value = l.url || "";
+        u.id = "lu"+i;
+        u.style.marginTop = "5px";
+        u.oninput = e => {
+            state.links[i].url = e.target.value;
+            update(hubRef,{links:state.links});
+        };
+
+        const b = document.createElement("button");
+        b.textContent = "Mở";
+        b.style.marginTop = "8px";
+        b.onclick = () => {
+            const url = state.links[i].url;
+            if (url) window.open(url,"_blank","noopener,noreferrer");
+        };
+
+        box.append(n,u,b);
+        $("linksContainer").appendChild(box);
+    });
+
+    $("wifiContainer").innerHTML = "";
+    state.wifis.forEach((wf,i) => {
+        const div = document.createElement("div");
+        div.className = "row";
+
+        const lbl = document.createElement("span");
+        lbl.className = "num-label";
+        lbl.textContent = i+1;
+
+        function makeWifiInput(key,placeholder,buttonColor) {
+            const input = document.createElement("input");
+            input.value = wf[key] || "";
+            input.className = "grow";
+            input.placeholder = placeholder;
+            input.id = key+"_"+i;
+
+            input.oninput = e => {
+                state.wifis[i][key] = e.target.value;
+                update(hubRef,{wifis:state.wifis});
+            };
+
+            const copy = document.createElement("button");
+            copy.textContent = "📋";
+            copy.style.background = buttonColor;
+            copy.onclick = () => navigator.clipboard.writeText(state.wifis[i][key] || "");
+
+            return [input,copy];
+        }
+
+        const [i1,b1] = makeWifiInput("w24_1","2.4G-1","#52c41a");
+        const [i2,b2] = makeWifiInput("w24_2","2.4G-2","#13c2c2");
+        const [i3,b3] = makeWifiInput("w5_1","5G-1","#722ed1");
+        const [i4,b4] = makeWifiInput("w5_2","5G-2","#eb2f96");
+
+        div.append(lbl,i1,b1,i2,b2,i3,b3,i4,b4);
+        $("wifiContainer").appendChild(div);
+    });
+
+    $("accContainer").innerHTML = "";
+    state.accounts.forEach((acc,i) => {
+        const div = document.createElement("div");
+        div.className = "row";
+
+        const n = document.createElement("input");
+        n.value = acc.name || "";
+        n.className = "grow";
+        n.placeholder = "Tên";
+        n.id = "n"+i;
+        n.oninput = e => {
+            state.accounts[i].name = e.target.value;
+            update(hubRef,{accounts:state.accounts});
+        };
+
+        const c1 = document.createElement("button");
+        c1.textContent = "📋";
+        c1.onclick = () => navigator.clipboard.writeText(state.accounts[i].name || "");
+
+        const p = document.createElement("input");
+        p.value = acc.pass || "";
+        p.style.width = "70px";
+        p.placeholder = "Pass";
+        p.id = "p"+i;
+        p.oninput = e => {
+            state.accounts[i].pass = e.target.value;
+            update(hubRef,{accounts:state.accounts});
+        };
+
+        const c2 = document.createElement("button");
+        c2.textContent = "📋";
+        c2.onclick = () => navigator.clipboard.writeText(state.accounts[i].pass || "");
+
+        const chk1 = document.createElement("button");
+        chk1.className = "check-btn " + (acc.checked1 ? "checked" : "");
+        chk1.textContent = acc.checked1 ? "✅" : "";
+        chk1.onclick = () => {
+            state.accounts[i].checked1 = !state.accounts[i].checked1;
+            update(hubRef,{accounts:state.accounts});
+        };
+
+        const chk2 = document.createElement("button");
+        chk2.className = "check-btn " + (acc.checked2 ? "checked" : "");
+        chk2.textContent = acc.checked2 ? "✅" : "";
+        chk2.onclick = () => {
+            state.accounts[i].checked2 = !state.accounts[i].checked2;
+            update(hubRef,{accounts:state.accounts});
+        };
+
+        const number = document.createElement("span");
+        number.className = "num-label";
+        number.textContent = i+1;
+
+        div.append(number,n,c1,p,c2,chk1,chk2);
+        $("accContainer").appendChild(div);
+    });
+
+    $("acc1000Container").innerHTML = "";
+    state.accounts1000.forEach((acc,i) => {
+        const div = document.createElement("div");
+        div.className = "row";
+
+        const number = document.createElement("span");
+        number.className = "num-label";
+        number.style.width = "45px";
+        number.textContent = i+1;
+
+        const n = document.createElement("input");
+        n.value = acc.name || "";
+        n.className = "grow";
+        n.placeholder = "Tên";
+        n.id = "n1000_"+i;
+        n.oninput = e => {
+            state.accounts1000[i].name = e.target.value;
+            update(hubRef,{accounts1000:state.accounts1000});
+        };
+
+        const c1 = document.createElement("button");
+        c1.textContent = "📋";
+        c1.onclick = () => navigator.clipboard.writeText(state.accounts1000[i].name || "");
+
+        const p = document.createElement("input");
+        p.value = acc.pass || "";
+        p.style.width = "70px";
+        p.placeholder = "Pass";
+        p.id = "p1000_"+i;
+        p.oninput = e => {
+            state.accounts1000[i].pass = e.target.value;
+            update(hubRef,{accounts1000:state.accounts1000});
+        };
+
+        const c2 = document.createElement("button");
+        c2.textContent = "📋";
+        c2.onclick = () => navigator.clipboard.writeText(state.accounts1000[i].pass || "");
+
+        const c = document.createElement("button");
+        c.className = "check-btn " + (acc.checked ? "checked" : "");
+        c.textContent = acc.checked ? "✅" : "";
+        c.onclick = () => {
+            state.accounts1000[i].checked = !state.accounts1000[i].checked;
+            update(hubRef,{accounts1000:state.accounts1000});
+        };
+
+        div.append(number,n,c1,p,c2,c);
+        $("acc1000Container").appendChild(div);
+    });
+
+    restoreFocus(focusInfo);
+}
+
+$("btn-update").onclick = () => {
+    state.mails = $("bulk").value.split("\n").filter(Boolean).slice(0,10);
+    update(hubRef,{
+        mails:state.mails,
+        used:Array(10).fill(false)
+    });
+    $("bulk").value = "";
+};
+
+$("btn-reset-mail").onclick = () => {
+    update(hubRef,{used:Array(10).fill(false)});
+};
+
+$("btn-copy-all-names").onclick = () => {
+    const allNames = state.accounts.map(acc=>acc.name || "").join("\n");
+    navigator.clipboard.writeText(allNames).then(() => {
+        alert("Đã copy toàn bộ tên của 200 account!");
+    });
+};
+
+$("btn-reset-acc1").onclick = () => {
+    const newAccs = state.accounts.map(a=>({...a,checked1:false}));
+    update(hubRef,{accounts:newAccs});
+};
+
+$("btn-reset-acc2").onclick = () => {
+    const newAccs = state.accounts.map(a=>({...a,checked2:false}));
+    update(hubRef,{accounts:newAccs});
+};
+
+$("btn-copy-all-1000").onclick = () => {
+    const allNames = state.accounts1000.map(acc=>acc.name || "").join("\n");
+    navigator.clipboard.writeText(allNames).then(() => {
+        alert("Đã copy toàn bộ tên của 1000 Acc!");
+    });
+};
+
+$("btn-reset-1000").onclick = () => {
+    const newAccs = state.accounts1000.map(a=>({...a,checked:false}));
+    update(hubRef,{accounts1000:newAccs});
+};
+
+$("note").oninput = () => {
+    update(hubRef,{note:$("note").value});
+};
+</script>
+
+</body>
+</html>
