@@ -15,7 +15,7 @@ button{background:#1677ff;color:#fff;border:0;border-radius:6px;padding:8px 8px;
 .check-btn{background:#fff;border:1px solid #ccc;width:38px;height:35px;font-size:18px;border-radius:6px;cursor:pointer}
 .checked{background:#d4edda;border-color:#28a745}
 .linkbox{border:1px solid #ddd;border-radius:10px;padding:10px;margin:10px 0}
-summary{cursor:pointer;font-weight:bold;padding:10px;background:#f9f9f9;border-radius:8px}
+h3{margin:8px 0}
 .num-label{width:30px;font-size:12px;color:#666;flex-shrink:0;text-align:center}
 
 .shortcut-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
@@ -51,7 +51,7 @@ summary{cursor:pointer;font-weight:bold;padding:10px;background:#f9f9f9;border-r
 
 <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center">
-        <h3 style="margin:8px 0">🔗 Lối tắt</h3>
+        <h3>🔗 Lối tắt</h3>
         <button id="btn-edit-shortcuts" style="background:#ff4d4f;font-size:14px;padding:8px 14px">✏ Sửa</button>
     </div>
 
@@ -72,47 +72,37 @@ summary{cursor:pointer;font-weight:bold;padding:10px;background:#f9f9f9;border-r
 </div>
 
 <div class="card">
-    <details>
-        <summary>🎁 10 Link Giftuto</summary>
-        <div id="giftutoContainer" style="margin-top:10px"></div>
-    </details>
+    <h3>🎁 10 Link Giftuto</h3>
+    <div id="giftutoContainer" style="margin-top:10px"></div>
 </div>
 
 <div class="card">
-    <details>
-        <summary>🔗 10 Link nhanh</summary>
-        <div id="linksContainer"></div>
-    </details>
+    <h3>🔗 10 Link nhanh</h3>
+    <div id="linksContainer"></div>
 </div>
 
 <div class="card">
-    <details>
-        <summary>📶 31 WiFi (4 Cột: 2x 2.4G & 2x 5G)</summary>
-        <div id="wifiContainer" style="margin-top:10px"></div>
-    </details>
+    <h3>📶 31 WiFi (4 Cột: 2x 2.4G & 2x 5G)</h3>
+    <div id="wifiContainer" style="margin-top:10px"></div>
 </div>
 
 <div class="card">
-    <details>
-        <summary>👤 200 Account (2 Cột Tích ✅)</summary>
-        <div style="display:flex;gap:6px;margin:10px 0;flex-wrap:wrap">
-            <button id="btn-copy-all-names" style="background:#28a745;flex:1;min-width:140px">📋 Copy tất cả Tên</button>
-            <button id="btn-reset-acc1" style="background:#faad14;flex:1;min-width:140px">Reset Tích Cột 1 🔄</button>
-            <button id="btn-reset-acc2" style="background:#ff4d4f;flex:1;min-width:140px">Reset Tích Cột 2 🔄</button>
-        </div>
-        <div id="accContainer"></div>
-    </details>
+    <h3>👤 200 Account (2 Cột Tích ✅)</h3>
+    <div style="display:flex;gap:6px;margin:10px 0;flex-wrap:wrap">
+        <button id="btn-copy-all-names" style="background:#28a745;flex:1;min-width:140px">📋 Copy tất cả Tên</button>
+        <button id="btn-reset-acc1" style="background:#faad14;flex:1;min-width:140px">Reset Tích Cột 1 🔄</button>
+        <button id="btn-reset-acc2" style="background:#ff4d4f;flex:1;min-width:140px">Reset Tích Cột 2 🔄</button>
+    </div>
+    <div id="accContainer"></div>
 </div>
 
 <div class="card">
-    <details>
-        <summary>👤 1000 Acc</summary>
-        <div style="display:flex;gap:8px;margin:10px 0">
-            <button id="btn-copy-all-1000" style="background:#28a745;flex:1">📋 Copy tất cả Tên 1000 Acc</button>
-            <button id="btn-reset-1000" style="background:#ff4d4f;flex:1">Reset tất cả dấu tích ✅</button>
-        </div>
-        <div id="acc1000Container"></div>
-    </details>
+    <h3>👤 1000 Acc</h3>
+    <div style="display:flex;gap:8px;margin:10px 0">
+        <button id="btn-copy-all-1000" style="background:#28a745;flex:1">📋 Copy tất cả Tên 1000 Acc</button>
+        <button id="btn-reset-1000" style="background:#ff4d4f;flex:1">Reset tất cả dấu tích ✅</button>
+    </div>
+    <div id="acc1000Container"></div>
 </div>
 
 <div class="card">
@@ -131,7 +121,6 @@ const firebaseConfig = {
 };
 
 const db = getDatabase(initializeApp(firebaseConfig));
-// Giữ nguyên nhánh dữ liệu hub_dat riêng biệt cho trang /dat
 const hubRef = ref(db, "hub_dat");
 
 const $ = id => document.getElementById(id);
@@ -583,3 +572,116 @@ function render() {
         chk2.textContent = acc.checked2 ? "✅" : "";
         chk2.onclick = () => {
             state.accounts[i].checked2 = !state.accounts[i].checked2;
+            update(hubRef,{accounts:state.accounts});
+        };
+
+        const number = document.createElement("span");
+        number.className = "num-label";
+        number.textContent = i+1;
+
+        div.append(number,n,c1,p,c2,chk1,chk2);
+        $("accContainer").appendChild(div);
+    });
+
+    $("acc1000Container").innerHTML = "";
+    state.accounts1000.forEach((acc,i) => {
+        const div = document.createElement("div");
+        div.className = "row";
+
+        const number = document.createElement("span");
+        number.className = "num-label";
+        number.style.width = "45px";
+        number.textContent = i+1;
+
+        const n = document.createElement("input");
+        n.value = acc.name || "";
+        n.className = "grow";
+        n.placeholder = "Tên";
+        n.id = "n1000_"+i;
+        n.oninput = e => {
+            state.accounts1000[i].name = e.target.value;
+            update(hubRef,{accounts1000:state.accounts1000});
+        };
+
+        const c1 = document.createElement("button");
+        c1.textContent = "📋";
+        c1.onclick = () => navigator.clipboard.writeText(state.accounts1000[i].name || "");
+
+        const p = document.createElement("input");
+        p.value = acc.pass || "";
+        p.style.width = "70px";
+        p.placeholder = "Pass";
+        p.id = "p1000_"+i;
+        p.oninput = e => {
+            state.accounts1000[i].pass = e.target.value;
+            update(hubRef,{accounts1000:state.accounts1000});
+        };
+
+        const c2 = document.createElement("button");
+        c2.textContent = "📋";
+        c2.onclick = () => navigator.clipboard.writeText(state.accounts1000[i].pass || "");
+
+        const c = document.createElement("button");
+        c.className = "check-btn " + (acc.checked ? "checked" : "");
+        c.textContent = acc.checked ? "✅" : "";
+        c.onclick = () => {
+            state.accounts1000[i].checked = !state.accounts1000[i].checked;
+            update(hubRef,{accounts1000:state.accounts1000});
+        };
+
+        div.append(number,n,c1,p,c2,c);
+        $("acc1000Container").appendChild(div);
+    });
+
+    restoreFocus(focusInfo);
+}
+
+$("btn-update").onclick = () => {
+    state.mails = $("bulk").value.split("\n").filter(Boolean).slice(0,10);
+    update(hubRef,{
+        mails:state.mails,
+        used:Array(10).fill(false)
+    });
+    $("bulk").value = "";
+};
+
+$("btn-reset-mail").onclick = () => {
+    update(hubRef,{used:Array(10).fill(false)});
+};
+
+$("btn-copy-all-names").onclick = () => {
+    const allNames = state.accounts.map(acc=>acc.name || "").join("\n");
+    navigator.clipboard.writeText(allNames).then(() => {
+        alert("Đã copy toàn bộ tên của 200 account!");
+    });
+};
+
+$("btn-reset-acc1").onclick = () => {
+    const newAccs = state.accounts.map(a=>({...a,checked1:false}));
+    update(hubRef,{accounts:newAccs});
+};
+
+$("btn-reset-acc2").onclick = () => {
+    const newAccs = state.accounts.map(a=>({...a,checked2:false}));
+    update(hubRef,{accounts:newAccs});
+};
+
+$("btn-copy-all-1000").onclick = () => {
+    const allNames = state.accounts1000.map(acc=>acc.name || "").join("\n");
+    navigator.clipboard.writeText(allNames).then(() => {
+        alert("Đã copy toàn bộ tên của 1000 Acc!");
+    });
+};
+
+$("btn-reset-1000").onclick = () => {
+    const newAccs = state.accounts1000.map(a=>({...a,checked:false}));
+    update(hubRef,{accounts1000:newAccs});
+};
+
+$("note").oninput = () => {
+    update(hubRef,{note:$("note").value});
+};
+</script>
+
+</body>
+</html>
