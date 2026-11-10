@@ -131,7 +131,7 @@ const firebaseConfig = {
 };
 
 const db = getDatabase(initializeApp(firebaseConfig));
-// Sử dụng nhánh hub_dat riêng biệt cho trang /dat
+// Giữ nguyên nhánh dữ liệu hub_dat riêng biệt cho trang /dat
 const hubRef = ref(db, "hub_dat");
 
 const $ = id => document.getElementById(id);
@@ -568,4 +568,18 @@ function render() {
 
         const c2 = document.createElement("button");
         c2.textContent = "📋";
-        c2.onclick = () =>
+        c2.onclick = () => navigator.clipboard.writeText(state.accounts[i].pass || "");
+
+        const chk1 = document.createElement("button");
+        chk1.className = "check-btn " + (acc.checked1 ? "checked" : "");
+        chk1.textContent = acc.checked1 ? "✅" : "";
+        chk1.onclick = () => {
+            state.accounts[i].checked1 = !state.accounts[i].checked1;
+            update(hubRef,{accounts:state.accounts});
+        };
+
+        const chk2 = document.createElement("button");
+        chk2.className = "check-btn " + (acc.checked2 ? "checked" : "");
+        chk2.textContent = acc.checked2 ? "✅" : "";
+        chk2.onclick = () => {
+            state.accounts[i].checked2 = !state.accounts[i].checked2;
